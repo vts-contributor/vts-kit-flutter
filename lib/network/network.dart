@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart' as dio_pkg;
+import 'package:dio/io.dart';
 import 'package:flutter_core/caches/caches.dart';
 import 'package:flutter_core/network/progress_callback.dart';
 import 'package:flutter_core/network/response.dart';
@@ -27,9 +27,9 @@ Future<V> get<V extends JsonResponse>(String host, String path,
     int connectTimeout = connectTimeout,
     required Function(Response res) parser}) async {
   final dio = prepareDio(interceptors: customInterceptors ?? interceptors);
-  dio.options.sendTimeout = sendTimeout;
-  dio.options.receiveTimeout = receiveTimeout;
-  dio.options.connectTimeout = connectTimeout;
+  dio.options.sendTimeout = Duration(milliseconds: sendTimeout);
+  dio.options.receiveTimeout = Duration(milliseconds: receiveTimeout);
+  dio.options.connectTimeout = Duration(milliseconds: connectTimeout);
   final response = await dio.get(
     '$host/$path',
     queryParameters: params,
@@ -53,9 +53,9 @@ Future<V> post<V extends JsonResponse>(
   required Function(Response res) parser,
 }) async {
   final dio = prepareDio(interceptors: customInterceptors ?? interceptors);
-  dio.options.connectTimeout = connectTimeout;
-  dio.options.receiveTimeout = receiveTimeout;
-  dio.options.sendTimeout = sendTimeout;
+  dio.options.connectTimeout = Duration(milliseconds: connectTimeout);
+  dio.options.receiveTimeout = Duration(milliseconds: receiveTimeout);
+  dio.options.sendTimeout = Duration(milliseconds: sendTimeout);
   final response = await dio.post(
     '$host/$path',
     data: body,
@@ -86,11 +86,13 @@ Future<File> download(
 
 dio_pkg.Dio prepareDio({required interceptor.Interceptors interceptors}) {
   final dio = dio_pkg.Dio()..interceptors.add(interceptors);
-  (dio.httpClientAdapter as DefaultHttpClientAdapter).onHttpClientCreate =
-      (HttpClient client) {
+  (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+    final HttpClient client =
+        HttpClient(context: SecurityContext(withTrustedRoots: false));
     client.badCertificateCallback =
         (X509Certificate cert, String host, int port) => true;
     return client;
   };
+
   return dio;
 }
